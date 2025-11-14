@@ -1,0 +1,24 @@
+# MATLAB backup files
+*.asv
+*.m~
+*.mat.old
+
+# Simulink cache and codegen
+slprj/
+sccprj/
+codegen/
+
+# Autosave and crash recovery
+*.autosave
+*.bak
+*.tmp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary MATLAB files
+*.mex* 
