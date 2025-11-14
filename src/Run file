@@ -1,0 +1,107 @@
+
+
+clear; close all;
+
+% ---------------- USER PARAMETERS -----------------------------
+d        = 1;          % dimension
+T        = 3010;        % horizon
+m        = 3;          % memory length
+R        = 15;          % radius of feasible ball  ‖x‖₂ ≤ R
+lambda   =1/sqrt(T);  % your λ in Φ(V)
+gamma=3;
+sigma  = 10;            % scale of centres / normals
+delta  = 1;          % offset in constraint  g_t(x)=d_tᵀx−δ
+prob   = 0.6;          % 60 % Normal, 40 % Uniform regime
+seed   = 17;           % RNG seed (deterministic instance)
+benchPer=200;
+pb_mode   = 2;   %  'coco-m2'
+
+% --------------------------------------------------------------
+
+
+load('data.mat')  % should contain C, D, C_st, D_st, T, m, delta, R, lambda, mode
+T        = 3010; 
+% Rebuild function handles for adversarial instance
+[fML, gradfML, gML, gradgML, fMEM, gMEM] = ...
+    rebuild_handles(C, D, T, m, delta);
+
+% Rebuild function handles for stochastic instance
+[fML_st, gradfML_st, gML_st, gradgML_st, fMEM_st, gMEM_st] = ...
+    rebuild_handles(C_st, D_st, T, m, delta);
+
+% Load saved benchmarks
+Sst  = load('bench_st.mat',  'bench');   bench_st  = Sst.bench;
+Sadv = load('bench_adv.mat', 'bench');   bench_adv = Sadv.bench;
+
+
+results_st = coco_memory_no_prediction( ...
+        fML_st, gradfML_st, gML_st, gradgML_st, ...
+        fMEM_st, gMEM_st, ...
+        m, T, R, bench_st, benchPer)   ;  %  <-- stochastic run
+
+results_adv = coco_memory_no_prediction( ...
+        fML, gradfML, gML, gradgML, ...
+        fMEM, gMEM, ...
+        m, T, R, bench_adv, benchPer);
+
+
+% ------------------------------------------------------------
+%  Combined plots: stochastic vs. adversarial
+% ------------------------------------------------------------
+tIdx = (m+1):T;                                      % evaluation rounds
+bReg = m^(3/2)*sqrt(tIdx.*log(tIdx))./tIdx;  bReg(1)=NaN;   % m^{3/2}√(t log t)/t
+
+
+% extract the stored curves (yours)
+avgSt  = results_st.avgRegret;
+avgAdv = results_adv.avgRegret;
+ccvSt  = results_st.ccv;
+ccvAdv = results_adv.ccv;
+
+
+
+% masks keep only the checkpoints that are not NaN
+idxSt_avg     = ~isnan(avgSt);
+idxAdv_avg    = ~isnan(avgAdv);
+
+
+idxSt_ccv     = ~isnan(ccvSt);
+idxAdv_ccv    = ~isnan(ccvAdv);
+
+
+% ---------- Average regret plot --------------------------------
+figure;
+h1 = plot(tIdx(idxSt_avg),     avgSt(idxSt_avg),      'b-',  'LineWidth',1.4); hold on
+h2 = plot(tIdx(idxAdv_avg),    avgAdv(idxAdv_avg),    'r-',  'LineWidth',1.4);
+h3 = plot(tIdx,                bReg,                  'k:',  'LineWidth',1.2); hold off
+
+xlabel('round $t$','Interpreter','latex');
+ylabel('$R_t/t$','Interpreter','latex');
+title('Average regret – stochastic vs.\ adversarial','Interpreter','latex');
+legend([h1 h2 h3], ...
+       {'our (stochastic)','our (adversarial)', ...
+        '$m^{3/2}\sqrt{t\log t}/t$'}, ...
+       'Interpreter','latex','Location','northeast');
+
+% ---------- Average regret plot --------------------------------
+
+
+% ---------- CCV / t plot ---------------------------------------
+figure;
+h1 = plot(tIdx(idxSt_ccv),     ccvSt(idxSt_ccv),      'b-',  'LineWidth',1.4); hold on
+h2 = plot(tIdx(idxAdv_ccv),    ccvAdv(idxAdv_ccv),    'r-',  'LineWidth',1.4);
+h3 = plot(tIdx,                bReg,                  'k:',  'LineWidth',1.2); hold off
+% If you later add a CCV theory curve, plot it here as well.
+
+xlabel('round $t$','Interpreter','latex');
+ylabel('CCV$/t$','Interpreter','latex');
+title('Cumulative constraint violation per round','Interpreter','latex');
+legend([h1 h2 h3], ...
+       {'our (stochastic)','our (adversarial)','$m^{3/2}\sqrt{t\log t}/t$'}, ...
+       'Interpreter','latex','Location','northeast');
+
+% ---------- CCV / t plot ---------------------------------------
+
+
+
+
